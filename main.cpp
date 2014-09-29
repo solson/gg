@@ -16,10 +16,12 @@ const char* vertexSource = R"(
 const char* fragmentSource = R"(
   #version 150
 
+  uniform vec3 triangleColor;
+
   out vec4 outColor;
 
   void main() {
-      outColor = vec4(1.0, 1.0, 1.0, 1.0);
+      outColor = vec4(triangleColor, 1.0);
   }
 )";
 
@@ -83,10 +85,13 @@ int main() {
   glLinkProgram(shaderProgram);
   glUseProgram(shaderProgram);
 
-  // Specify the layout of the vertex data
+  // Specify the layout of the vertex data.
   GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
   glEnableVertexAttribArray(posAttrib);
   glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+  GLint uniColor = glGetUniformLocation(shaderProgram, "triangleColor");
+  glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);
 
   while (window.isOpen()) {
     sf::Event windowEvent;
@@ -98,14 +103,16 @@ int main() {
       }
     }
 
-    // Clear the screen to black
+    // Clear the screen to black.
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Draw a triangle from the 3 vertices
+    // Draw a triangle from the 3 vertices.
+    float time = (float)clock() / (float)CLOCKS_PER_SEC;
+    glUniform3f(uniColor, (sin(time * 4.0f) + 1.0f) / 2.0f, 0.0f, 0.0f);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    // Swap buffers
+    // Swap buffers.
     window.display();
   }
 

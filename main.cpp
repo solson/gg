@@ -7,21 +7,25 @@ const char* vertexSource = R"(
   #version 150
 
   in vec2 position;
+  in vec3 color;
+
+  out vec3 Color;
 
   void main() {
-      gl_Position = vec4(position, 0.0, 1.0);
+    Color = color;
+    gl_Position = vec4(position, 0.0, 1.0);
   }
 )";
 
 const char* fragmentSource = R"(
   #version 150
 
-  uniform vec3 triangleColor;
+  in vec3 Color;
 
   out vec4 outColor;
 
   void main() {
-      outColor = vec4(triangleColor, 1.0);
+    outColor = vec4(Color, 1.0);
   }
 )";
 
@@ -65,9 +69,9 @@ int main() {
   glGenBuffers(1, &vbo);
 
   GLfloat vertices[] = {
-    0.0f,  0.5f,
-    0.5f, -0.5f,
-    -0.5f, -0.5f
+    0.0f,  0.5f, 1.0f, 0.0f, 0.0f,
+    0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+    -0.5f, -0.5f, 0.0f, 0.0f, 1.0f
   };
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -88,7 +92,13 @@ int main() {
   // Specify the layout of the vertex data.
   GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
   glEnableVertexAttribArray(posAttrib);
-  glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
+                        nullptr);
+
+  GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
+  glEnableVertexAttribArray(colAttrib);
+  glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
+                        (void*)(2 * sizeof(float)));
 
   GLint uniColor = glGetUniformLocation(shaderProgram, "triangleColor");
   glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);

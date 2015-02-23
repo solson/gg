@@ -7,6 +7,9 @@ env = Environment(
         '-Wextra',
         '--std=c++11',
     ],
+    LIBS = [
+        'SOIL',
+    ],
 
     # Allow clang++ to use color.
     ENV = {'TERM': os.environ['TERM']},

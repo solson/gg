@@ -1,7 +1,7 @@
 #include <iostream>
 #include <GL/glew.h>
-#include <SFML/System.hpp>
-#include <SFML/Window.hpp>
+#include <SDL.h>
+#include <SDL_opengl.h>
 
 const char vertexSource[] = R"(
   #version 150
@@ -47,12 +47,15 @@ GLuint compileShader(GLenum shaderType, const char* shaderSource) {
 }
 
 int main() {
-  sf::ContextSettings settings;
-  settings.depthBits = 24;
-  settings.stencilBits = 8;
-
-  sf::Window window(sf::VideoMode(800, 600, 32), "gg",
-                    sf::Style::Titlebar | sf::Style::Close, settings);
+  // Initialize SDL.
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+  SDL_Window* window = SDL_CreateWindow(
+      "gg", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600,
+      SDL_WINDOW_OPENGL);
+  SDL_GLContext context = SDL_GL_CreateContext(window);
 
   // Initialize GLEW.
   glewExperimental = GL_TRUE;
@@ -111,24 +114,17 @@ int main() {
   GLint uniColor = glGetUniformLocation(shaderProgram, "triangleColor");
   glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);
 
+  SDL_Event windowEvent;
   while (true) {
-    sf::Event windowEvent;
-    while (window.pollEvent(windowEvent)) {
-      switch (windowEvent.type) {
-        case sf::Event::Closed:
-          window.close();
-          break;
-        case sf::Event::KeyPressed:
-          if (windowEvent.key.code == sf::Keyboard::Escape)
-            window.close();
-          break;
-        default:
-          break;
+    if (SDL_PollEvent(&windowEvent)) {
+      if (windowEvent.type == SDL_QUIT) {
+        break;
       }
-    }
 
-    if (!window.isOpen()) {
-      break;
+      if (windowEvent.type == SDL_KEYUP &&
+          windowEvent.key.keysym.sym == SDLK_ESCAPE) {
+        break;
+      }
     }
 
     // Clear the screen to black.
@@ -141,8 +137,10 @@ int main() {
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Swap buffers.
-    window.display();
+    SDL_GL_SwapWindow(window);
   }
 
+  SDL_GL_DeleteContext(context);
+  SDL_Quit();
   return 0;
 }

@@ -12,7 +12,7 @@ env = Environment(
     ENV = {'TERM': os.environ['TERM']},
 )
 
-env.ParseConfig('pkg-config --libs --cflags glew sfml-window')
+env.ParseConfig('pkg-config --libs --cflags glew sdl2')
 
 env.Program(
     target = 'gg',

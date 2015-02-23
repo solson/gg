@@ -111,7 +111,7 @@ int main() {
   GLint uniColor = glGetUniformLocation(shaderProgram, "triangleColor");
   glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);
 
-  while (window.isOpen()) {
+  while (true) {
     sf::Event windowEvent;
     while (window.pollEvent(windowEvent)) {
       switch (windowEvent.type) {

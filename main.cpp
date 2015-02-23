@@ -3,7 +3,7 @@
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>
 
-const char* vertexSource = R"(
+const char vertexSource[] = R"(
   #version 150
 
   in vec2 position;
@@ -17,7 +17,7 @@ const char* vertexSource = R"(
   }
 )";
 
-const char* fragmentSource = R"(
+const char fragmentSource[] = R"(
   #version 150
 
   in vec3 Color;

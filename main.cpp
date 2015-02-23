@@ -29,10 +29,15 @@ const char fragmentSource[] = R"(
 
   out vec4 outColor;
 
-  uniform sampler2D tex;
+  uniform sampler2D texKitten;
+  uniform sampler2D texPuppy;
+  uniform float time;
 
   void main() {
-    outColor = texture(tex, Texcoord) * vec4(Color, 1.0);
+    vec4 colKitten = texture(texKitten, Texcoord);
+    vec4 colPuppy = texture(texPuppy, Texcoord);
+    float blendFactor = (sin(time * 90.0) + 1.0) / 2.0;
+    outColor = mix(colKitten, colPuppy, blendFactor);
   }
 )";
 
@@ -79,7 +84,7 @@ int main() {
     -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, // Top-left
      0.5f,  0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f, // Top-right
      0.5f, -0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, // Bottom-right
-    -0.5f, -0.5f,  1.0f, 0.0f, 1.0f,  0.0f, 1.0f  // Bottom-left
+    -0.5f, -0.5f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f  // Bottom-left
   };
   GLuint vbo;
   glGenBuffers(1, &vbo);
@@ -124,17 +129,6 @@ int main() {
   glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
                         (void*)(5 * sizeof(float)));
 
-  // Set up texture.
-  GLuint tex;
-  glGenTextures(1, &tex);
-  glBindTexture(GL_TEXTURE_2D, tex);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
   // // Black/white checkerboard
   // float pixels[] = {
   //   0.0f, 0.0f, 0.0f,  1.0f, 1.0f, 1.0f,
@@ -142,15 +136,43 @@ int main() {
   // };
   // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_FLOAT, pixels);
 
+  // Set up textures.
+  GLuint textures[2];
+  glGenTextures(2, textures);
+
   int width, height;
-  unsigned char* image = SOIL_load_image(
-      "sample.png", &width, &height, 0, SOIL_LOAD_RGB);
+  unsigned char* image;
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, textures[0]);
+  image = SOIL_load_image("sample.png", &width, &height, 0, SOIL_LOAD_RGB);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
                GL_UNSIGNED_BYTE, image);
   SOIL_free_image_data(image);
+  glUniform1i(glGetUniformLocation(shaderProgram, "texKitten"), 0);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, textures[1]);
+  image = SOIL_load_image("sample2.png", &width, &height, 0, SOIL_LOAD_RGB);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+               GL_UNSIGNED_BYTE, image);
+  SOIL_free_image_data(image);
+  glUniform1i(glGetUniformLocation(shaderProgram, "texPuppy"), 1);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
   // TODO(tsion): Test mipmaps.
   // glGenerateMipmap(GL_TEXTURE_2D);
+
+  GLint timeUniform = glGetUniformLocation(shaderProgram, "time");
 
   SDL_Event windowEvent;
   while (true) {
@@ -169,6 +191,10 @@ int main() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    // Set the time uniform.
+    glUniform1f(timeUniform, (GLfloat)clock() / (GLfloat)CLOCKS_PER_SEC);
+
+    // Draw a rectangle from the 2 triangles using 6 indices.
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Swap buffers.

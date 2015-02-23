@@ -1,8 +1,11 @@
-#include <iostream>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <GL/glew.h>
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include <SOIL/SOIL.h>
+#include <iostream>
 
 const char vertexSource[] = R"(
   #version 150
@@ -14,10 +17,14 @@ const char vertexSource[] = R"(
   out vec3 Color;
   out vec2 Texcoord;
 
-  void main() {
+  uniform mat4 model;
+  uniform mat4 view;
+  uniform mat4 proj;
+
+  void main(void) {
     Texcoord = texcoord;
     Color = color;
-    gl_Position = vec4(position, 0.0, 1.0);
+    gl_Position = proj * view * model * vec4(position, 0.0, 1.0);
   }
 )";
 
@@ -31,13 +38,11 @@ const char fragmentSource[] = R"(
 
   uniform sampler2D texKitten;
   uniform sampler2D texPuppy;
-  uniform float time;
 
-  void main() {
+  void main(void) {
     vec4 colKitten = texture(texKitten, Texcoord);
     vec4 colPuppy = texture(texPuppy, Texcoord);
-    float blendFactor = (sin(time * 90.0) + 1.0) / 2.0;
-    outColor = mix(colKitten, colPuppy, blendFactor);
+    outColor = mix(colKitten, colPuppy, 0.5);
   }
 )";
 
@@ -172,7 +177,21 @@ int main() {
   // TODO(tsion): Test mipmaps.
   // glGenerateMipmap(GL_TEXTURE_2D);
 
-  GLint timeUniform = glGetUniformLocation(shaderProgram, "time");
+  // Model transformation calculated below in the render loop.
+  GLint transUniform = glGetUniformLocation(shaderProgram, "model");
+
+  // Calculate view transformation.
+  glm::mat4 view = glm::lookAt(
+      glm::vec3(1.2f, 1.2f, 1.2f),
+      glm::vec3(0.0f, 0.0f, 0.0f),
+      glm::vec3(0.0f, 0.0f, 1.0f));
+  GLint uniView = glGetUniformLocation(shaderProgram, "view");
+  glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
+
+  // Calculate projection transformation.
+  glm::mat4 proj = glm::perspective(45.0f, 800.0f / 600.0f, 1.0f, 10.0f);
+  GLint uniProj = glGetUniformLocation(shaderProgram, "proj");
+  glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
 
   SDL_Event windowEvent;
   while (true) {
@@ -191,8 +210,11 @@ int main() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Set the time uniform.
-    glUniform1f(timeUniform, (GLfloat)clock() / (GLfloat)CLOCKS_PER_SEC);
+    // Calculate model transformation.
+    float seconds = (float)SDL_GetTicks() / 1000.0f;
+    glm::mat4 model;
+    model = glm::rotate(model, seconds * 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+    glUniformMatrix4fv(transUniform, 1, GL_FALSE, glm::value_ptr(model));
 
     // Draw a rectangle from the 2 triangles using 6 indices.
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -201,7 +223,16 @@ int main() {
     SDL_GL_SwapWindow(window);
   }
 
+  glDeleteTextures(2, textures);
+  glDeleteProgram(shaderProgram);
+  glDeleteShader(fragmentShader);
+  glDeleteShader(vertexShader);
+  glDeleteBuffers(1, &ebo);
+  glDeleteBuffers(1, &vbo);
+  glDeleteVertexArrays(1, &vao);
+
   SDL_GL_DeleteContext(context);
   SDL_Quit();
+
   return 0;
 }

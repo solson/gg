@@ -148,7 +148,9 @@ int main() {
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
                GL_UNSIGNED_BYTE, image);
   SOIL_free_image_data(image);
-  glGenerateMipmap(GL_TEXTURE_2D);
+
+  // TODO(tsion): Test mipmaps.
+  // glGenerateMipmap(GL_TEXTURE_2D);
 
   SDL_Event windowEvent;
   while (true) {

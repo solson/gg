@@ -71,6 +71,7 @@ int main() {
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
   SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8); // 8-bit stencil buffer.
+  SDL_SetRelativeMouseMode(SDL_TRUE);
   SDL_Window* window = SDL_CreateWindow(
       "gg", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600,
       SDL_WINDOW_OPENGL);
@@ -217,9 +218,11 @@ int main() {
   // Set up camera vectors for view transformation.
   glm::vec3 cameraUp = glm::vec3(0.0f, 0.0f, 1.0f);
   glm::vec3 cameraPosition = glm::vec3(2.5f, 2.5f, 2.0f);
-  glm::vec3 cameraDirection = glm::normalize(
-      glm::vec3(0.0f, 0.0f, 0.0f) - cameraPosition);
+  glm::vec3 cameraDirection;
+  float horizontalAngle = 3.8f;
+  float verticalAngle = -0.58f;
   float cameraSpeed = 1.0f / 8.0f;
+  float cameraRotationSpeed = 0.0005f;
 
   // Calculate projection transformation.
   glm::mat4 proj = glm::perspective(45.0f, 800.0f / 600.0f, 1.0f, 10.0f);
@@ -253,11 +256,10 @@ int main() {
               cameraPosition -=
                   glm::cross(cameraUp, cameraDirection) * cameraSpeed;
               break;
-            case SDLK_SPACE:
+            case SDLK_r:
               cameraPosition += cameraUp * cameraSpeed;
               break;
-            case SDLK_LSHIFT:
-            case SDLK_RSHIFT:
+            case SDLK_f:
               cameraPosition -= cameraUp * cameraSpeed;
               break;
           }
@@ -269,6 +271,11 @@ int main() {
               quit = true;
               break;
           }
+          break;
+
+        case SDL_MOUSEMOTION:
+          horizontalAngle += windowEvent.motion.xrel * cameraRotationSpeed;
+          verticalAngle   -= windowEvent.motion.yrel * cameraRotationSpeed;
           break;
       }
     }
@@ -286,6 +293,10 @@ int main() {
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 
     // Calculate view transformation.
+    cameraDirection = glm::vec3(
+        cos(verticalAngle) * sin(horizontalAngle),
+        cos(verticalAngle) * cos(horizontalAngle),
+        sin(verticalAngle));
     glm::mat4 view = glm::lookAt(
         cameraPosition, cameraPosition + cameraDirection, cameraUp);
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));

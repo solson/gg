@@ -10,7 +10,7 @@
 const char vertexSource[] = R"(
   #version 150
 
-  in vec2 position;
+  in vec3 position;
   in vec3 color;
   in vec2 texcoord;
 
@@ -20,11 +20,12 @@ const char vertexSource[] = R"(
   uniform mat4 model;
   uniform mat4 view;
   uniform mat4 proj;
+  uniform vec3 overrideColor;
 
   void main(void) {
     Texcoord = texcoord;
-    Color = color;
-    gl_Position = proj * view * model * vec4(position, 0.0, 1.0);
+    Color = overrideColor * color;
+    gl_Position = proj * view * model * vec4(position, 1.0);
   }
 )";
 
@@ -42,7 +43,7 @@ const char fragmentSource[] = R"(
   void main(void) {
     vec4 colKitten = texture(texKitten, Texcoord);
     vec4 colPuppy = texture(texPuppy, Texcoord);
-    outColor = mix(colKitten, colPuppy, 0.5);
+    outColor = vec4(Color, 1.0) * mix(colKitten, colPuppy, 0.5);
   }
 )";
 
@@ -69,6 +70,7 @@ int main() {
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8); // 8-bit stencil buffer.
   SDL_Window* window = SDL_CreateWindow(
       "gg", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600,
       SDL_WINDOW_OPENGL);
@@ -78,6 +80,9 @@ int main() {
   glewExperimental = GL_TRUE;
   glewInit();
 
+  // Initialize OpenGL.
+  glEnable(GL_DEPTH_TEST);
+
   // Create Vertex Array Object.
   GLuint vao;
   glGenVertexArrays(1, &vao);
@@ -85,26 +90,61 @@ int main() {
 
   // Create a Vertex Buffer Object and copy the vertex data to it.
   GLfloat vertices[] = {
-  //  X      Y      R     G     B      S     T
-    -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f, // Top-left
-     0.5f,  0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f, // Top-right
-     0.5f, -0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f, // Bottom-right
-    -0.5f, -0.5f,  1.0f, 1.0f, 1.0f,  0.0f, 1.0f  // Bottom-left
+  // X      Y      Z     R     G     B     S     T
+    -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+    // Floor vertices.
+    -1.0f, -1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+     1.0f, -1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+     1.0f,  1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+     1.0f,  1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+    -1.0f,  1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+    -1.0f, -1.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f
   };
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-  GLuint elements[] = {
-    0, 1, 2,
-    2, 3, 0
-  };
-  GLuint ebo;
-  glGenBuffers(1, &ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements,
-               GL_STATIC_DRAW);
 
   // Create and compile the vertex and fragment shaders.
   GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource);
@@ -121,25 +161,18 @@ int main() {
   // Specify the layout of the vertex data.
   GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
   glEnableVertexAttribArray(posAttrib);
-  glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
+  glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
                         nullptr);
 
   GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
   glEnableVertexAttribArray(colAttrib);
-  glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
-                        (void*)(2 * sizeof(float)));
+  glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                        (void*)(3 * sizeof(float)));
 
   GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
   glEnableVertexAttribArray(texAttrib);
-  glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
-                        (void*)(5 * sizeof(float)));
-
-  // // Black/white checkerboard
-  // float pixels[] = {
-  //   0.0f, 0.0f, 0.0f,  1.0f, 1.0f, 1.0f,
-  //   1.0f, 1.0f, 1.0f,  0.0f, 0.0f, 0.0f
-  // };
-  // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 2, 2, 0, GL_RGB, GL_FLOAT, pixels);
+  glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                        (void*)(6 * sizeof(float)));
 
   // Set up textures.
   GLuint textures[2];
@@ -178,11 +211,11 @@ int main() {
   // glGenerateMipmap(GL_TEXTURE_2D);
 
   // Model transformation calculated below in the render loop.
-  GLint transUniform = glGetUniformLocation(shaderProgram, "model");
+  GLint uniModel = glGetUniformLocation(shaderProgram, "model");
 
   // Calculate view transformation.
   glm::mat4 view = glm::lookAt(
-      glm::vec3(1.2f, 1.2f, 1.2f),
+      glm::vec3(2.5f, 2.5f, 2.0f),
       glm::vec3(0.0f, 0.0f, 0.0f),
       glm::vec3(0.0f, 0.0f, 1.0f));
   GLint uniView = glGetUniformLocation(shaderProgram, "view");
@@ -192,6 +225,8 @@ int main() {
   glm::mat4 proj = glm::perspective(45.0f, 800.0f / 600.0f, 1.0f, 10.0f);
   GLint uniProj = glGetUniformLocation(shaderProgram, "proj");
   glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
+
+  GLint uniColor = glGetUniformLocation(shaderProgram, "overrideColor");
 
   SDL_Event windowEvent;
   while (true) {
@@ -206,18 +241,44 @@ int main() {
       }
     }
 
-    // Clear the screen to black.
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    // Clear the screen to white.
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Calculate model transformation.
     float seconds = (float)SDL_GetTicks() / 1000.0f;
     glm::mat4 model;
     model = glm::rotate(model, seconds * 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-    glUniformMatrix4fv(transUniform, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 
-    // Draw a rectangle from the 2 triangles using 6 indices.
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    // Draw the cube.
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Draw the floor.
+    glEnable(GL_STENCIL_TEST);
+
+    glStencilFunc(GL_ALWAYS, 1, 0xFF); // Set any stencil to 1
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+    glStencilMask(0xFF); // Write to stencil buffer
+    glDepthMask(GL_FALSE); // Don't write to depth buffer
+    glClear(GL_STENCIL_BUFFER_BIT); // Clear stencil buffer (0 by default)
+
+    glDrawArrays(GL_TRIANGLES, 36, 6);
+
+    // Draw the cube reflection.
+    glStencilFunc(GL_EQUAL, 1, 0xFF); // Pass test if stencil value is 1
+    glStencilMask(0x00); // Don't write anything to stencil buffer
+    glDepthMask(GL_TRUE); // Write to depth buffer
+
+    model = glm::scale(glm::translate(model, glm::vec3(0, 0, -1)),
+                       glm::vec3(1, 1, -1));
+    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+
+    glUniform3f(uniColor, 0.3f, 0.3f, 0.3f);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glUniform3f(uniColor, 1.0f, 1.0f, 1.0f);
+
+    glDisable(GL_STENCIL_TEST);
 
     // Swap buffers.
     SDL_GL_SwapWindow(window);
@@ -227,7 +288,6 @@ int main() {
   glDeleteProgram(shaderProgram);
   glDeleteShader(fragmentShader);
   glDeleteShader(vertexShader);
-  glDeleteBuffers(1, &ebo);
   glDeleteBuffers(1, &vbo);
   glDeleteVertexArrays(1, &vao);
 

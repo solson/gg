@@ -210,15 +210,17 @@ int main() {
   // TODO(tsion): Test mipmaps.
   // glGenerateMipmap(GL_TEXTURE_2D);
 
-  // Model transformation calculated below in the render loop.
+  // Transformations calculated below in the render loop.
   GLint uniModel = glGetUniformLocation(shaderProgram, "model");
+  GLint uniView = glGetUniformLocation(shaderProgram, "view");
 
   // Calculate view transformation.
+  glm::vec3 cameraUp = glm::vec3(0.0f, 0.0f, 1.0f);
+  glm::vec3 cameraPosition = glm::vec3(2.5f, 2.5f, 2.0f);
+  glm::vec3 cameraDirection = glm::normalize(
+      glm::vec3(0.0f, 0.0f, 0.0f) - cameraPosition);
   glm::mat4 view = glm::lookAt(
-      glm::vec3(2.5f, 2.5f, 2.0f),
-      glm::vec3(0.0f, 0.0f, 0.0f),
-      glm::vec3(0.0f, 0.0f, 1.0f));
-  GLint uniView = glGetUniformLocation(shaderProgram, "view");
+      cameraPosition, cameraPosition + cameraDirection, cameraUp);
   glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 
   // Calculate projection transformation.

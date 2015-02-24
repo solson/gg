@@ -214,14 +214,12 @@ int main() {
   GLint uniModel = glGetUniformLocation(shaderProgram, "model");
   GLint uniView = glGetUniformLocation(shaderProgram, "view");
 
-  // Calculate view transformation.
+  // Set up camera vectors for view transformation.
   glm::vec3 cameraUp = glm::vec3(0.0f, 0.0f, 1.0f);
   glm::vec3 cameraPosition = glm::vec3(2.5f, 2.5f, 2.0f);
   glm::vec3 cameraDirection = glm::normalize(
       glm::vec3(0.0f, 0.0f, 0.0f) - cameraPosition);
-  glm::mat4 view = glm::lookAt(
-      cameraPosition, cameraPosition + cameraDirection, cameraUp);
-  glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
+  float cameraSpeed = 1.0f / 8.0f;
 
   // Calculate projection transformation.
   glm::mat4 proj = glm::perspective(45.0f, 800.0f / 600.0f, 1.0f, 10.0f);
@@ -231,17 +229,51 @@ int main() {
   GLint uniColor = glGetUniformLocation(shaderProgram, "overrideColor");
 
   SDL_Event windowEvent;
+  bool quit = false;
   while (true) {
-    if (SDL_PollEvent(&windowEvent)) {
-      if (windowEvent.type == SDL_QUIT) {
-        break;
-      }
+    while (SDL_PollEvent(&windowEvent)) {
+      switch (windowEvent.type) {
+        case SDL_QUIT:
+          quit = true;
+          break;
 
-      if (windowEvent.type == SDL_KEYUP &&
-          windowEvent.key.keysym.sym == SDLK_ESCAPE) {
-        break;
+        case SDL_KEYDOWN:
+          switch (windowEvent.key.keysym.sym) {
+            case SDLK_w:
+              cameraPosition += cameraDirection * cameraSpeed;
+              break;
+            case SDLK_s:
+              cameraPosition -= cameraDirection * cameraSpeed;
+              break;
+            case SDLK_a:
+              cameraPosition +=
+                  glm::cross(cameraUp, cameraDirection) * cameraSpeed;
+              break;
+            case SDLK_d:
+              cameraPosition -=
+                  glm::cross(cameraUp, cameraDirection) * cameraSpeed;
+              break;
+            case SDLK_SPACE:
+              cameraPosition += cameraUp * cameraSpeed;
+              break;
+            case SDLK_LSHIFT:
+            case SDLK_RSHIFT:
+              cameraPosition -= cameraUp * cameraSpeed;
+              break;
+          }
+          break;
+
+        case SDL_KEYUP:
+          switch (windowEvent.key.keysym.sym) {
+            case SDLK_ESCAPE:
+              quit = true;
+              break;
+          }
+          break;
       }
     }
+
+    if (quit) { break; }
 
     // Clear the screen to white.
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -253,29 +285,31 @@ int main() {
     model = glm::rotate(model, seconds * 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 
+    // Calculate view transformation.
+    glm::mat4 view = glm::lookAt(
+        cameraPosition, cameraPosition + cameraDirection, cameraUp);
+    glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
+
     // Draw the cube.
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
-    // Draw the floor.
     glEnable(GL_STENCIL_TEST);
 
+    // Draw the floor.
     glStencilFunc(GL_ALWAYS, 1, 0xFF); // Set any stencil to 1
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
     glStencilMask(0xFF); // Write to stencil buffer
     glDepthMask(GL_FALSE); // Don't write to depth buffer
     glClear(GL_STENCIL_BUFFER_BIT); // Clear stencil buffer (0 by default)
-
     glDrawArrays(GL_TRIANGLES, 36, 6);
 
     // Draw the cube reflection.
     glStencilFunc(GL_EQUAL, 1, 0xFF); // Pass test if stencil value is 1
     glStencilMask(0x00); // Don't write anything to stencil buffer
     glDepthMask(GL_TRUE); // Write to depth buffer
-
     model = glm::scale(glm::translate(model, glm::vec3(0, 0, -1)),
                        glm::vec3(1, 1, -1));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-
     glUniform3f(uniColor, 0.3f, 0.3f, 0.3f);
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glUniform3f(uniColor, 1.0f, 1.0f, 1.0f);

@@ -297,8 +297,12 @@ int main() {
     if (quit) { break; }
 
     glm::vec3 direction;
-    if (forwardHeld)  { direction += cameraDirection; }
-    if (backwardHeld) { direction -= cameraDirection; }
+    if (forwardHeld) {
+      direction += glm::vec3(cameraDirection.x, cameraDirection.y, 0.0f);
+    }
+    if (backwardHeld) {
+      direction -= glm::vec3(cameraDirection.x, cameraDirection.y, 0.0f);
+    }
     if (leftHeld)     { direction += glm::cross(cameraUp, cameraDirection); }
     if (rightHeld)    { direction -= glm::cross(cameraUp, cameraDirection); }
     if (upHeld)       { direction += cameraUp; }

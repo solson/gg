@@ -235,12 +235,12 @@ int main() {
   bool quit = false;
   float lastTime = (float)SDL_GetTicks() / 1000.0f;
 
-  bool forwardHeld = false;
+  bool forwardHeld  = false;
   bool backwardHeld = false;
-  bool leftHeld = false;
-  bool rightHeld = false;
-  bool upHeld = false;
-  bool downHeld = false;
+  bool leftHeld     = false;
+  bool rightHeld    = false;
+  bool upHeld       = false;
+  bool downHeld     = false;
 
   while (true) {
     float currentTime = (float)SDL_GetTicks() / 1000.0f;
@@ -296,14 +296,14 @@ int main() {
 
     if (quit) { break; }
 
-    glm::vec3 direction(0.0f);
+    glm::vec3 direction;
     if (forwardHeld)  { direction += cameraDirection; }
     if (backwardHeld) { direction -= cameraDirection; }
     if (leftHeld)     { direction += glm::cross(cameraUp, cameraDirection); }
     if (rightHeld)    { direction -= glm::cross(cameraUp, cameraDirection); }
     if (upHeld)       { direction += cameraUp; }
     if (downHeld)     { direction -= cameraUp; }
-    if (direction != glm::vec3(0.0f)) {
+    if (direction != glm::vec3()) {
       cameraPosition += glm::normalize(direction) * deltaTime * cameraSpeed;
     }
 
@@ -312,9 +312,9 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Calculate model transformation.
-    float seconds = (float)SDL_GetTicks() / 1000.0f;
     glm::mat4 model;
-    model = glm::rotate(model, seconds * 180.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, currentTime * 180.0f,
+                        glm::vec3(0.0f, 0.0f, 1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 
     // Calculate view transformation.

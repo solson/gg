@@ -221,8 +221,8 @@ int main() {
   glm::vec3 cameraDirection;
   float horizontalAngle = 3.8f;
   float verticalAngle = -0.58f;
-  float cameraSpeed = 1.0f / 8.0f;
-  float cameraRotationSpeed = 0.0005f;
+  float cameraSpeed = 4.0f;
+  float cameraRotationSpeed = 0.025f;
 
   // Calculate projection transformation.
   glm::mat4 proj = glm::perspective(45.0f, 800.0f / 600.0f, 1.0f, 10.0f);
@@ -233,7 +233,20 @@ int main() {
 
   SDL_Event windowEvent;
   bool quit = false;
+  float lastTime = (float)SDL_GetTicks() / 1000.0f;
+
+  bool forwardHeld = false;
+  bool backwardHeld = false;
+  bool leftHeld = false;
+  bool rightHeld = false;
+  bool upHeld = false;
+  bool downHeld = false;
+
   while (true) {
+    float currentTime = (float)SDL_GetTicks() / 1000.0f;
+    float deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
     while (SDL_PollEvent(&windowEvent)) {
       switch (windowEvent.type) {
         case SDL_QUIT:
@@ -242,31 +255,23 @@ int main() {
 
         case SDL_KEYDOWN:
           switch (windowEvent.key.keysym.sym) {
-            case SDLK_w:
-              cameraPosition += cameraDirection * cameraSpeed;
-              break;
-            case SDLK_s:
-              cameraPosition -= cameraDirection * cameraSpeed;
-              break;
-            case SDLK_a:
-              cameraPosition +=
-                  glm::cross(cameraUp, cameraDirection) * cameraSpeed;
-              break;
-            case SDLK_d:
-              cameraPosition -=
-                  glm::cross(cameraUp, cameraDirection) * cameraSpeed;
-              break;
-            case SDLK_r:
-              cameraPosition += cameraUp * cameraSpeed;
-              break;
-            case SDLK_f:
-              cameraPosition -= cameraUp * cameraSpeed;
-              break;
+            case SDLK_w: forwardHeld  = true; break;
+            case SDLK_s: backwardHeld = true; break;
+            case SDLK_a: leftHeld     = true; break;
+            case SDLK_d: rightHeld    = true; break;
+            case SDLK_r: upHeld       = true; break;
+            case SDLK_f: downHeld     = true; break;
           }
           break;
 
         case SDL_KEYUP:
           switch (windowEvent.key.keysym.sym) {
+            case SDLK_w: forwardHeld  = false; break;
+            case SDLK_s: backwardHeld = false; break;
+            case SDLK_a: leftHeld     = false; break;
+            case SDLK_d: rightHeld    = false; break;
+            case SDLK_r: upHeld       = false; break;
+            case SDLK_f: downHeld     = false; break;
             case SDLK_ESCAPE:
               quit = true;
               break;
@@ -274,13 +279,33 @@ int main() {
           break;
 
         case SDL_MOUSEMOTION:
-          horizontalAngle += windowEvent.motion.xrel * cameraRotationSpeed;
-          verticalAngle   -= windowEvent.motion.yrel * cameraRotationSpeed;
+          horizontalAngle +=
+              windowEvent.motion.xrel * deltaTime * cameraRotationSpeed;
+          horizontalAngle = std::fmod(horizontalAngle, 2 * glm::pi<float>());
+
+          verticalAngle -=
+              windowEvent.motion.yrel * deltaTime * cameraRotationSpeed;
+          verticalAngle = glm::clamp(
+              verticalAngle,
+              -glm::pi<float>() / 2.0f + 0.001f,
+              glm::pi<float>() / 2.0f - 0.001f);
+
           break;
       }
     }
 
     if (quit) { break; }
+
+    glm::vec3 direction(0.0f);
+    if (forwardHeld)  { direction += cameraDirection; }
+    if (backwardHeld) { direction -= cameraDirection; }
+    if (leftHeld)     { direction += glm::cross(cameraUp, cameraDirection); }
+    if (rightHeld)    { direction -= glm::cross(cameraUp, cameraDirection); }
+    if (upHeld)       { direction += cameraUp; }
+    if (downHeld)     { direction -= cameraUp; }
+    if (direction != glm::vec3(0.0f)) {
+      cameraPosition += glm::normalize(direction) * deltaTime * cameraSpeed;
+    }
 
     // Clear the screen to white.
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);

@@ -17,15 +17,13 @@ const char vertexSource[] = R"(
   out vec3 Color;
   out vec2 Texcoord;
 
-  uniform mat4 model;
-  uniform mat4 view;
-  uniform mat4 proj;
+  uniform mat4 trans;
   uniform vec3 overrideColor;
 
   void main(void) {
     Texcoord = texcoord;
     Color = overrideColor * color;
-    gl_Position = proj * view * model * vec4(position, 1.0);
+    gl_Position = trans * vec4(position, 1.0);
   }
 )";
 
@@ -211,10 +209,6 @@ int main() {
   // TODO(tsion): Test mipmaps.
   // glGenerateMipmap(GL_TEXTURE_2D);
 
-  // Transformations calculated below in the render loop.
-  GLint uniModel = glGetUniformLocation(shaderProgram, "model");
-  GLint uniView = glGetUniformLocation(shaderProgram, "view");
-
   // Set up camera vectors for view transformation.
   glm::vec3 cameraUp = glm::vec3(0.0f, 0.0f, 1.0f);
   glm::vec3 cameraPosition = glm::vec3(2.5f, 2.5f, 2.0f);
@@ -226,10 +220,9 @@ int main() {
 
   // Calculate projection transformation.
   glm::mat4 proj = glm::perspective(45.0f, 800.0f / 600.0f, 1.0f, 10.0f);
-  GLint uniProj = glGetUniformLocation(shaderProgram, "proj");
-  glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
 
   GLint uniColor = glGetUniformLocation(shaderProgram, "overrideColor");
+  GLint uniTrans = glGetUniformLocation(shaderProgram, "trans");
 
   SDL_Event windowEvent;
   bool quit = false;
@@ -303,10 +296,10 @@ int main() {
     if (backwardHeld) {
       direction -= glm::vec3(cameraDirection.x, cameraDirection.y, 0.0f);
     }
-    if (leftHeld)     { direction += glm::cross(cameraUp, cameraDirection); }
-    if (rightHeld)    { direction -= glm::cross(cameraUp, cameraDirection); }
-    if (upHeld)       { direction += cameraUp; }
-    if (downHeld)     { direction -= cameraUp; }
+    if (leftHeld)  { direction += glm::cross(cameraUp, cameraDirection); }
+    if (rightHeld) { direction -= glm::cross(cameraUp, cameraDirection); }
+    if (upHeld)    { direction += cameraUp; }
+    if (downHeld)  { direction -= cameraUp; }
     if (direction != glm::vec3()) {
       cameraPosition += glm::normalize(direction) * deltaTime * cameraSpeed;
     }
@@ -319,7 +312,6 @@ int main() {
     glm::mat4 model;
     model = glm::rotate(model, currentTime * 180.0f,
                         glm::vec3(0.0f, 0.0f, 1.0f));
-    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 
     // Calculate view transformation.
     cameraDirection = glm::vec3(
@@ -328,7 +320,10 @@ int main() {
         sin(verticalAngle));
     glm::mat4 view = glm::lookAt(
         cameraPosition, cameraPosition + cameraDirection, cameraUp);
-    glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
+
+    // Calculate the overall combined transformation.
+    glm::mat4 trans = proj * view * model;
+    glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(trans));
 
     // Draw the cube.
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -349,7 +344,8 @@ int main() {
     glDepthMask(GL_TRUE); // Write to depth buffer
     model = glm::scale(glm::translate(model, glm::vec3(0, 0, -1)),
                        glm::vec3(1, 1, -1));
-    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+    trans = proj * view * model;
+    glUniformMatrix4fv(uniTrans, 1, GL_FALSE, glm::value_ptr(trans));
     glUniform3f(uniColor, 0.3f, 0.3f, 0.3f);
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glUniform3f(uniColor, 1.0f, 1.0f, 1.0f);
